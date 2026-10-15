@@ -1,0 +1,27 @@
+﻿.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+chroma/
+chroma_db/
+data/chroma/
+
+# Project release archive
+*.zip
+
+# Runtime databases and AI vector storage
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/chroma/
+data/chroma_db/
+
+# Keep project documents
+!data/documents/

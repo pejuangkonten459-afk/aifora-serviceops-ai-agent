@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIFORA | ServiceOps AI Agent</title>
+    <style>
+        :root {
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #172033;
+            background: #f4f6fa;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #14213d;
+            color: white;
+            padding: 22px max(24px, calc((100% - 960px) / 2));
+        }
+
+        header strong {
+            font-size: 21px;
+            letter-spacing: 1px;
+        }
+
+        header p {
+            margin: 6px 0 0;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        main {
+            max-width: 840px;
+            margin: 42px auto;
+            padding: 0 20px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #e1e6ef;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 8px 28px #14213d0a;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 27px;
+        }
+
+        .muted {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin: 22px 0 9px;
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            font: inherit;
+        }
+
+        textarea:focus {
+            outline: 2px solid #93c5fd;
+            border-color: #2563eb;
+        }
+
+        button {
+            margin-top: 14px;
+            padding: 12px 20px;
+            border: 0;
+            border-radius: 9px;
+            background: #1d4ed8;
+            color: white;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        #status {
+            margin-top: 16px;
+            color: #475569;
+        }
+
+        #result {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .answer {
+            white-space: pre-wrap;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        .source {
+            display: inline-block;
+            margin: 5px 6px 0 0;
+            padding: 6px 10px;
+            border-radius: 7px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 13px;
+        }
+
+        footer {
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+            padding: 0 20px 30px;
+        }
+
+        @media (max-width: 600px) {
+            main { margin-top: 24px; }
+            .panel { padding: 20px; }
+            h1 { font-size: 23px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <strong>AIFORA</strong>
+        <p>ServiceOps AI Agent · Operational Knowledge Assistant</p>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h1>Asisten Operasional</h1>
+            <p class="muted">
+                Ajukan pertanyaan operasional. Agent akan mencari informasi
+                dari dokumen SOP yang tersedia dan menampilkan sumbernya.
+            </p>
+
+            <form id="question-form">
+                <label for="question">Pertanyaan Anda</label>
+                <textarea
+                    id="question"
+                    minlength="3"
+                    maxlength="1000"
+                    required
+                    placeholder="Contoh: Apa yang harus dilakukan ketika koneksi internet terputus?"
+                ></textarea>
+                <button id="submit-button" type="submit">Cari Jawaban</button>
+            </form>
+
+            <div id="status" role="status" aria-live="polite"></div>
+
+            <section id="result" aria-live="polite">
+                <hr>
+                <h2>Jawaban</h2>
+                <div id="answer" class="answer"></div>
+
+                <h3>Sumber SOP</h3>
+                <div id="sources"></div>
+                <p id="method" class="muted"></p>
+            </section>
+        </section>
+    </main>
+
+    <footer>
+        AIFORA AI ENGINEERING · ServiceOps AI Agent
+    </footer>
+
+    <script>
+        const form = document.getElementById("question-form");
+        const questionInput = document.getElementById("question");
+        const submitButton = document.getElementById("submit-button");
+        const statusElement = document.getElementById("status");
+        const resultElement = document.getElementById("result");
+        const answerElement = document.getElementById("answer");
+        const sourcesElement = document.getElementById("sources");
+        const methodElement = document.getElementById("method");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const query = questionInput.value.trim();
+
+            if (query.length < 3) {
+                statusElement.textContent =
+                    "Pertanyaan harus berisi minimal 3 karakter.";
+                return;
+            }
+
+            submitButton.disabled = true;
+            statusElement.textContent = "Sedang mencari informasi SOP...";
+            resultElement.style.display = "none";
+
+            try {
+                const response = await fetch("/rag/answer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query: query,
+                        n_results: 2
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || "Permintaan tidak berhasil."
+                    );
+                }
+
+                answerElement.textContent = data.answer;
+                sourcesElement.replaceChildren();
+
+                if (data.sources.length === 0) {
+                    sourcesElement.textContent = "Tidak ada sumber SOP yang relevan.";
+                } else {
+                    for (const source of data.sources) {
+                        const item = document.createElement("span");
+                        item.className = "source";
+                        item.textContent = source;
+                        sourcesElement.appendChild(item);
+                    }
+                }
+
+                methodElement.textContent = "Metode: " + data.method;
+                resultElement.style.display = "block";
+                statusElement.textContent = "Pencarian selesai.";
+            } catch (error) {
+                statusElement.textContent =
+                    "Gagal mengambil jawaban: " + error.message;
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
